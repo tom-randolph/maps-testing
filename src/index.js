@@ -31,153 +31,155 @@ function initMap() {
     let isActive = false;
 
 
-google.maps.event.addListener(map,"click", (e)=>
-{   
-  
-    if(isActive) return;
-
-    //state managment
-    isActive = true;
-
-    let markerID = id;
-    id++;
-    const pos = e.latLng.toJSON();
-
-
-    //marker
-    let marker = new google.maps.Marker({
-        position: pos,
-        map,
-        draggable: true,
-        icon: "../img/marker_info_white_xsmall.png",
-                    
-    })
-
-    //rectangle
-    let rectangle = new google.maps.Rectangle({
-        bounds : new google.maps.LatLngBounds( {lat: pos.lat -.001,
-                                            lng: pos.lng -.001}, 
-                                            {
-                                                lat: pos.lat +.001,
-                                                lng: pos.lng +.001
-                                            }),
-        map,
-        editable: true,
-        draggable: true,
-            
-        });
+    google.maps.event.addListener(map,"click", (e)=>
+    {   
     
-    //movement
-    rectangle.addListener('dragstart', ()=>{
-        marker.setOpacity(.4)
-    });
+        if(isActive) return;
 
-    marker.addListener('dragstart', ()=>{  
-        marker.setOpacity(.4)
-    });
+        //state managment
+        isActive = true;
 
-    rectangle.addListener('dragend', ()=>{
-        marker.setPosition(rectangle.getBounds().getCenter());
-        marker.setOpacity(1)
-    });
-
-    rectangle.addListener('bounds_changed', ()=>{
-        marker.setPosition(rectangle.getBounds().getCenter());
-    });
-
-    marker.addListener('dragend', ()=>{
-        const centerMarker = marker.getPosition().toJSON();
-        const centerRect = rectangle.getBounds().getCenter().toJSON();
-
-        const diff = {lat: centerMarker.lat - centerRect.lat, lng: centerMarker.lng - centerRect.lng}
-        let bounds = rectangle.getBounds().toJSON();
-        console.log(diff)
-        bounds.north+= diff.lat;
-        bounds.south+= diff.lat;
-        bounds.east+= diff.lng;
-        bounds.west+= diff.lng;
-        rectangle.setBounds(bounds);
-        marker.setOpacity(1)
-    });
-
-    //info button content
-    const deleteBtn = '<button type="button" id = "'+markerID.toString()+'d" class="mx-2 btn btn-danger">Delete</button>';
-    const confirmBtn = '<button type="button" id = "'+markerID.toString()+'c" class="mx-2 btn btn-success">Confirm</button>';
-    const editBtn = '<button type="button" id = "'+markerID.toString()+'e" class="mx-2 btn btn-primary" style="display:none">Edit</button>';
-    const content = "<div class='btn-toolbar'>" + confirmBtn + editBtn + deleteBtn +  "</div>";
+        let markerID = id;
+        id++;
+        const pos = e.latLng.toJSON();
 
 
-    let infowindow = new google.maps.InfoWindow({
-            content
-    });
-    infowindow.open(map,marker);
+        //marker
+        let marker = new google.maps.Marker({
+            position: pos,
+            map,
+            draggable: true,
+            icon: "../img/marker_info_white_xsmall.png",
+                        
+        })
+
+        //rectangle
+        let rectangle = new google.maps.Rectangle({
+            bounds : new google.maps.LatLngBounds( {lat: pos.lat -.001,
+                                                lng: pos.lng -.001}, 
+                                                {
+                                                    lat: pos.lat +.001,
+                                                    lng: pos.lng +.001
+                                                }),
+            map,
+            editable: true,
+            draggable: true,
+                
+            });
+        
+        //movement
+        rectangle.addListener('dragstart', ()=>{
+            marker.setOpacity(.4)
+        });
+
+        marker.addListener('dragstart', ()=>{  
+            marker.setOpacity(.4)
+        });
+
+        rectangle.addListener('dragend', ()=>{
+            marker.setOpacity(1)
+        });
+
+        rectangle.addListener('bounds_changed', ()=>{
+            marker.setPosition(rectangle.getBounds().getCenter());
+        });
+
+        marker.addListener('dragend', ()=>{
+            const centerMarker = marker.getPosition().toJSON();
+            const centerRect = rectangle.getBounds().getCenter().toJSON();
+
+            const diff = {lat: centerMarker.lat - centerRect.lat, lng: centerMarker.lng - centerRect.lng}
+            let bounds = rectangle.getBounds().toJSON();
+            console.log(diff)
+            bounds.north+= diff.lat;
+            bounds.south+= diff.lat;
+            bounds.east+= diff.lng;
+            bounds.west+= diff.lng;
+            rectangle.setBounds(bounds);
+            marker.setOpacity(1)
+        });
+
+        //info button content
+        
+        const deleteBtn = `<button type="button" id = "${markerID.toString()}d" class="mx-2 btn btn-danger">Delete</button>`;
+
+        const confirmBtn = `<button type="button" id = "${markerID.toString()}c" class="mx-2 btn btn-success">Confirm</button>`;
+        const editBtn = `<button type="button" id = "${markerID.toString()}e" class="mx-2 btn btn-primary" style="display:none">Edit</button>`;
+        const content = `<div class='btn-toolbar'>${confirmBtn + editBtn + deleteBtn}</div>`;
 
 
-    marker.addListener('click', function() {
-        infowindow.open(map, this);
-    });
+        let infowindow = new google.maps.InfoWindow({
+                content
+        });
 
-    google.maps.event.addListener(infowindow, 'domready', function() {
-        console.log(markerID)
+        infowindow.open(map,marker);
 
-        //delete
-        google.maps.event.addDomListener(document.getElementById(markerID.toString()+"d"), 'click', function() {
 
+        marker.addListener('click', function() {
+            infowindow.open(map, this);
+        });
+
+        google.maps.event.addListener(infowindow, 'domready', function() {
+            console.log(markerID)
+
+            //delete
+            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"d"), 'click', function() {
+
+                    infowindow.close();
+                    isActive=false;
+                    marker.setMap(null);
+                    rectangle.setMap(null);
+                    deleteSelector(markerID);
+                    console.log(selectors);
+            });
+            //confirm
+            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"c"), 'click', function() {
+                document.getElementById(markerID.toString()+"c").style.display="none"
+                document.getElementById(markerID.toString()+"e").style.display="inline-block"
                 infowindow.close();
-                isActive=false;
-                marker.setMap(null);
-                rectangle.setMap(null);
-                deleteSelector(markerID);
-                console.log(selectors);
-        });
-        //confirm
-        google.maps.event.addDomListener(document.getElementById(markerID.toString()+"c"), 'click', function() {
-            document.getElementById(markerID.toString()+"c").style.display="none"
-            document.getElementById(markerID.toString()+"e").style.display="inline-block"
-            infowindow.close();
-            isActive = false;
-            marker.setOptions({
-                draggable:false,
-                opacity:.5,
-                icon: "../img/marker_info_white_xsmall2.png"
+                isActive = false;
+                marker.setOptions({
+                    draggable:false,
+                    opacity:.5,
+                    icon: "../img/marker_info_white_xsmall2.png"
+                });
+                rectangle.setOptions({
+                    editable:false,
+                    draggable: false,
+                    strokeOpacity:.5,
+                });
+                
             });
-            rectangle.setOptions({
-                editable:false,
-                draggable: false,
-                strokeOpacity:.5,
+
+            //edit
+            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"e"), 'click', function() {
+                document.getElementById(markerID.toString()+"e").style.display="none"
+                document.getElementById(markerID.toString()+"c").style.display="inline-block"
+                infowindow.close();
+                isActive = true;
+                marker.setOptions({
+                    draggable:true,
+                    opacity:1,
+                    icon: "../img/marker_info_white_xsmall.png"
+                });
+                rectangle.setOptions({
+                    editable:true,
+                    draggable: true,
+                    strokeOpacity:1,
+                });
             });
-            
         });
 
-        //edit
-        google.maps.event.addDomListener(document.getElementById(markerID.toString()+"e"), 'click', function() {
-            document.getElementById(markerID.toString()+"e").style.display="none"
-            document.getElementById(markerID.toString()+"c").style.display="inline-block"
-            infowindow.close();
-            isActive = true;
-            marker.setOptions({
-                draggable:true,
-                opacity:1,
-                icon: "../img/marker_info_white_xsmall.png"
-            });
-            rectangle.setOptions({
-                editable:true,
-                draggable: true,
-                strokeOpacity:1,
-            });
-        });
+        let selector = {
+            marker,
+            rectangle,
+            id: markerID,
+            pos,
+            bounds: rectangle.getBounds().toJSON()
+        }
+        selectors.push(selector);
+        renderSelector(selector);
     });
-
-    let selector = {
-        marker,
-        rectangle,
-        id: markerID,
-        pos,
-        bounds: rectangle.getBounds().toJSON()
-    }
-    selectors.push(selector);
-    renderSelector(selector);
-});
 
 
 }
@@ -224,5 +226,7 @@ function renderSelector(sel){
     container.appendChild(item);
     
 }
+
+
 
 
