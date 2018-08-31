@@ -14,6 +14,165 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
 
+  class Zone {
+
+    constructor(map, pos, id){
+        this.map = map;
+        this.pos = pos;
+        this.id = id;
+        this.addMarker();
+        this.addRectangle();
+        this.addInfoWindow();
+    }
+
+    addMarker(){
+
+        //create (render) the marker
+
+        this.marker = new google.maps.Marker({
+            position: this.pos,
+            map: this.map,
+            draggable: true,
+            icon: "../img/marker_info_white_xsmall.png",
+                        
+        })
+
+        //implement movement adjustments
+
+        this.marker.addListener('dragstart', ()=> this.marker.setOpacity(.4));
+
+        this.marker.addListener('dragend', ()=>{
+
+            const centerMarker = this.marker.getPosition().toJSON();
+            const centerRect = this.rectangle.getBounds().getCenter().toJSON();
+
+            const diff = {lat: centerMarker.lat - centerRect.lat, lng: centerMarker.lng - centerRect.lng}
+            let bounds = this.rectangle.getBounds().toJSON();
+            bounds.north+= diff.lat;
+            bounds.south+= diff.lat;
+            bounds.east+= diff.lng;
+            bounds.west+= diff.lng;
+            this.rectangle.setBounds(bounds);
+            this.marker.setOpacity(1)
+        });
+    } 
+
+    addRectangle(){
+
+        //create the rectangle (render)
+
+        this.rectangle = new google.maps.Rectangle({
+            bounds : new google.maps.LatLngBounds( {lat: this.pos.lat -.001,
+                                                lng: this.pos.lng -.001}, 
+                                                {
+                                                    lat: this.pos.lat +.001,
+                                                    lng: this.pos.lng +.001
+                                                }),
+            map: this.map,
+            editable: true,
+            draggable: true,
+                
+            });
+
+        //implement movement adjustments
+        
+        this.rectangle.addListener('dragstart', ()=>{
+            this.marker.setOpacity(.4)
+        });
+
+        this.rectangle.addListener('dragend', ()=>{
+            this.marker.setOpacity(1)
+        });
+
+        this.rectangle.addListener('bounds_changed', ()=>{
+            this.marker.setPosition(this.rectangle.getBounds().getCenter());
+        });
+        
+    }
+
+    addInfoWindow(){
+
+        //info window content
+
+        const deleteBtn = `<button type="button"  class="mx-2 btn btn-danger delete">Delete</button>`;
+        const confirmBtn = `<button type="button"  class="mx-2 btn btn-success confirm">Confirm</button>`;
+        const editBtn = `<button type="button"  class="mx-2 btn btn-primary edit" style="display:none">Edit</button>`;
+        const content = `<div id ="${this.id}" class='btn-toolbar'>${confirmBtn + editBtn + deleteBtn}</div>`;
+
+        //render window
+
+        this.infoWindow = new google.maps.InfoWindow(
+            {
+            content
+            }
+        );
+    
+        this.infoWindow.open(this.map,this.marker);
+        
+        //handle dynamic opening
+
+        this.marker.addListener('click', () => this.infoWindow.open(this.map, this.marker));
+
+        //handle dom events
+
+        google.maps.event.addListener(this.infoWindow, 'domready', ()=> {
+
+            const div = document.getElementById(this.id);
+            const deleteElem = div.querySelector('.delete');
+            const confirmElem = div.querySelector('.confirm');
+            const editElem = div.querySelector('.edit');
+
+            deleteElem.addEventListener('click', ()=>{this.remove()});
+            confirmElem.addEventListener('click', ()=>{
+                confirmElem.style.display = 'none';
+                editElem.style.display = 'inline-block';
+                this._confirm()
+            });
+            editElem.addEventListener('click', ()=>{
+                editElem.style.display = 'none';
+                confirmElem.style.display = 'inline-block';
+                this._edit()
+            });
+
+        });
+    }
+
+
+    remove(){
+        this.infoWindow.close();
+        this.marker.setMap(null);
+        this.rectangle.setMap(null);
+    } 
+
+    _confirm(){
+        this.infoWindow.close();
+        this.marker.setOptions({
+            draggable:false,
+            opacity:.5,
+            icon: "../img/marker_info_white_xsmall2.png"
+        });
+        this.rectangle.setOptions({
+            editable:false,
+            draggable: false,
+            strokeOpacity:.5,
+        });
+    }
+
+    _edit(){
+        this.infoWindow.close();
+        this.marker.setOptions({
+            draggable:true,
+            opacity:1,
+            icon: "../img/marker_info_white_xsmall.png"
+        });
+        this.rectangle.setOptions({
+            editable:true,
+            draggable: true,
+            strokeOpacity:1,
+        });
+    }
+
+}
 
 
 
@@ -37,148 +196,24 @@ function initMap() {
         if(isActive) return;
 
         //state managment
-        isActive = true;
+        // isActive = true;
 
-        let markerID = id;
-        id++;
+        
         const pos = e.latLng.toJSON();
 
+        zone = new Zone(map,pos,id);
 
-        //marker
-        let marker = new google.maps.Marker({
-            position: pos,
-            map,
-            draggable: true,
-            icon: "../img/marker_info_white_xsmall.png",
-                        
-        })
+        id++;
 
-        //rectangle
-        let rectangle = new google.maps.Rectangle({
-            bounds : new google.maps.LatLngBounds( {lat: pos.lat -.001,
-                                                lng: pos.lng -.001}, 
-                                                {
-                                                    lat: pos.lat +.001,
-                                                    lng: pos.lng +.001
-                                                }),
-            map,
-            editable: true,
-            draggable: true,
-                
-            });
-        
-        //movement
-        rectangle.addListener('dragstart', ()=>{
-            marker.setOpacity(.4)
-        });
-
-        marker.addListener('dragstart', ()=>{  
-            marker.setOpacity(.4)
-        });
-
-        rectangle.addListener('dragend', ()=>{
-            marker.setOpacity(1)
-        });
-
-        rectangle.addListener('bounds_changed', ()=>{
-            marker.setPosition(rectangle.getBounds().getCenter());
-        });
-
-        marker.addListener('dragend', ()=>{
-            const centerMarker = marker.getPosition().toJSON();
-            const centerRect = rectangle.getBounds().getCenter().toJSON();
-
-            const diff = {lat: centerMarker.lat - centerRect.lat, lng: centerMarker.lng - centerRect.lng}
-            let bounds = rectangle.getBounds().toJSON();
-            console.log(diff)
-            bounds.north+= diff.lat;
-            bounds.south+= diff.lat;
-            bounds.east+= diff.lng;
-            bounds.west+= diff.lng;
-            rectangle.setBounds(bounds);
-            marker.setOpacity(1)
-        });
-
-        //info button content
-        
-        const deleteBtn = `<button type="button" id = "${markerID.toString()}d" class="mx-2 btn btn-danger">Delete</button>`;
-
-        const confirmBtn = `<button type="button" id = "${markerID.toString()}c" class="mx-2 btn btn-success">Confirm</button>`;
-        const editBtn = `<button type="button" id = "${markerID.toString()}e" class="mx-2 btn btn-primary" style="display:none">Edit</button>`;
-        const content = `<div class='btn-toolbar'>${confirmBtn + editBtn + deleteBtn}</div>`;
-
-
-        let infowindow = new google.maps.InfoWindow({
-                content
-        });
-
-        infowindow.open(map,marker);
-
-
-        marker.addListener('click', function() {
-            infowindow.open(map, this);
-        });
-
-        google.maps.event.addListener(infowindow, 'domready', function() {
-            console.log(markerID)
-
-            //delete
-            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"d"), 'click', function() {
-
-                    infowindow.close();
-                    isActive=false;
-                    marker.setMap(null);
-                    rectangle.setMap(null);
-                    deleteSelector(markerID);
-                    console.log(selectors);
-            });
-            //confirm
-            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"c"), 'click', function() {
-                document.getElementById(markerID.toString()+"c").style.display="none"
-                document.getElementById(markerID.toString()+"e").style.display="inline-block"
-                infowindow.close();
-                isActive = false;
-                marker.setOptions({
-                    draggable:false,
-                    opacity:.5,
-                    icon: "../img/marker_info_white_xsmall2.png"
-                });
-                rectangle.setOptions({
-                    editable:false,
-                    draggable: false,
-                    strokeOpacity:.5,
-                });
-                
-            });
-
-            //edit
-            google.maps.event.addDomListener(document.getElementById(markerID.toString()+"e"), 'click', function() {
-                document.getElementById(markerID.toString()+"e").style.display="none"
-                document.getElementById(markerID.toString()+"c").style.display="inline-block"
-                infowindow.close();
-                isActive = true;
-                marker.setOptions({
-                    draggable:true,
-                    opacity:1,
-                    icon: "../img/marker_info_white_xsmall.png"
-                });
-                rectangle.setOptions({
-                    editable:true,
-                    draggable: true,
-                    strokeOpacity:1,
-                });
-            });
-        });
-
-        let selector = {
-            marker,
-            rectangle,
-            id: markerID,
-            pos,
-            bounds: rectangle.getBounds().toJSON()
-        }
-        selectors.push(selector);
-        renderSelector(selector);
+        // let selector = {
+        //     marker,
+        //     rectangle,
+        //     id: markerID,
+        //     pos,
+        //     bounds: rectangle.getBounds().toJSON()
+        // }
+        // selectors.push(selector);
+        // renderSelector(selector);
     });
 
 
@@ -226,6 +261,7 @@ function renderSelector(sel){
     container.appendChild(item);
     
 }
+
 
 
 
