@@ -32,11 +32,14 @@ document.addEventListener('DOMContentLoaded', function () {
         else{
             this.bounds = bounds;
         }
+        this.rendered = false;
+    }
+    render(){
         this.addMarker();
         this.addRectangle();
-        this.addInfoWindow();
+        // this.addInfoWindow();
+        this.rendered = true;
     }
-
     addMarker(){
 
         //create (render) the marker
@@ -147,9 +150,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     remove(){
-        this.infoWindow.close();
+        // this.infoWindow.close();
         this.marker.setMap(null);
         this.rectangle.setMap(null);
+        this.rendered = false;
     } 
 
     _confirm(){
@@ -186,6 +190,122 @@ document.addEventListener('DOMContentLoaded', function () {
 
 }
 
+
+
+
+
+
+
+
+
+
+
+
+let map;
+let id = 0;
+let selectors = [];
+const startLoc = {lat:36.563707, lng:-81.646534};
+
+let positions = []
+
+for(let i =1; i<200; i++){
+
+    let {lat, lng} = startLoc;
+    positions.push({
+        lat,
+        lng: lng + .004*i
+    });
+
+    positions.push({
+        lat,
+        lng: lng - .004*i
+    });
+}
+
+
+function initMap() {
+
+    
+
+    map = new google.maps.Map(
+        document.getElementById('map'), {center: startLoc, mapTypeId: "satellite",zoom: 13, });
+   
+    
+    map.addListener('bounds_changed', proceduralRender);
+    
+    let isActive = false;
+
+    let bank = [];
+
+    positions.forEach((pos)=>{
+        let zone = new Zone(map, pos, id);
+        bank.push(zone);
+        id++;
+    })
+
+    const renderBtn = document.getElementById('render');
+
+    renderBtn.addEventListener('click', (e)=>{
+        bank.forEach((zone)=>{
+            if(!zone.rendered){
+                zone.render();
+            }
+            
+        })
+    })
+
+    const renderProcBtn = document.getElementById('render-proc');
+
+    renderProcBtn.addEventListener('click', proceduralRender)
+
+    function proceduralRender(e){
+        bank.forEach((zone)=>{
+            if(map.getBounds().contains(zone.pos)){
+                if(!zone.rendered){
+                    zone.render();
+                }
+            }
+            else{
+                if(zone.rendered){
+                    zone.remove();
+                }
+            }
+        })
+    }
+
+    const removeBtn = document.getElementById('remove');
+
+    removeBtn.addEventListener('click', (e)=>{
+        bank.forEach((zone)=>{
+            if(zone.rendered){
+                zone.remove();
+            }
+        })
+    })
+
+
+}
+
+
+
+function updateSelector(sel){
+    let i;
+    for(; i<selctors.length;i++){
+        if(selctors[i].id===sel.id){
+            selectors[i]=sel;
+            return true
+        }
+
+    }
+    return false;
+}
+
+
+
+
+
+
+
 function deleteSelector(id){
     selectors = selectors.filter(e => e.id != id)
 
@@ -214,69 +334,4 @@ function renderSelector(sel){
     container.appendChild(item);
     
 }
-
-
-
-
-let map;
-let id = 0;
-let selectors = [];
-
-function initMap() {
-
-    const startLoc = {lat:36.563707, lng:-81.646534};
-
-    map = new google.maps.Map(
-        document.getElementById('map'), {center: startLoc, mapTypeId: "satellite",zoom: 18, });
-   
-    let isActive = false;
-
-
-    google.maps.event.addListener(map,"click", (e)=>
-    {   
-    
-        if(isActive) return;
-
-        //state managment
-        // isActive = true;
-
-        
-        const pos = e.latLng.toJSON();
-
-        let zone = new Zone(map, pos, id);
-
-        id++;
-
-        // let selector = {
-        //     marker,
-        //     rectangle,
-        //     id: markerID,
-        //     pos,
-        //     bounds: rectangle.getBounds().toJSON()
-        // }
-        // selectors.push(selector);
-        // renderSelector(selector);
-    });
-
-
-}
-
-
-
-function updateSelector(sel){
-    let i;
-    for(; i<selctors.length;i++){
-        if(selctors[i].id===sel.id){
-            selectors[i]=sel;
-            return true
-        }
-
-    }
-    return false;
-}
-
-
-
-
-
 
