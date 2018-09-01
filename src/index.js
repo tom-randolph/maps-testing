@@ -16,10 +16,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
   class Zone {
 
-    constructor(map, pos, id){
+    constructor(map, pos, id=0, bounds){
         this.map = map;
         this.pos = pos;
         this.id = id;
+        if(!bounds){
+            this.bounds = [{lat: this.pos.lat -.001,
+                lng: this.pos.lng -.001}, 
+                {
+                    lat: this.pos.lat +.001,
+                    lng: this.pos.lng +.001
+                }];
+        }
+
+        else{
+            this.bounds = bounds;
+        }
         this.addMarker();
         this.addRectangle();
         this.addInfoWindow();
@@ -59,15 +71,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     addRectangle(){
 
+
         //create the rectangle (render)
 
         this.rectangle = new google.maps.Rectangle({
-            bounds : new google.maps.LatLngBounds( {lat: this.pos.lat -.001,
-                                                lng: this.pos.lng -.001}, 
-                                                {
-                                                    lat: this.pos.lat +.001,
-                                                    lng: this.pos.lng +.001
-                                                }),
+            bounds : new google.maps.LatLngBounds( ...this.bounds),
             map: this.map,
             editable: true,
             draggable: true,
@@ -172,7 +180,41 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    list(){
+        const list = document.querySelector('.list');
+    }
+
 }
+
+function deleteSelector(id){
+    selectors = selectors.filter(e => e.id != id)
+
+    // parentNode = document.querySelector(".list-group")
+    item = document.getElementById(id.toString())
+
+    item.parentNode.removeChild(item);
+
+}
+
+function renderSelector(sel){
+    container=document.querySelector(".list-group")
+    item = document.createElement("a")
+    item.classList.add("list-group-item");
+    item.classList.add("list-group-item-action");
+    
+     
+    item.innerHTML = sel.id;
+    item.role = "tab";
+    item.href = "#";
+    item.id = sel.id;
+    item.onclick = () =>{
+    sel.rectangle.setOptions({
+        strokeColor:"red"
+    })}
+    container.appendChild(item);
+    
+}
+
 
 
 
@@ -201,7 +243,7 @@ function initMap() {
         
         const pos = e.latLng.toJSON();
 
-        zone = new Zone(map,pos,id);
+        let zone = new Zone(map, pos, id);
 
         id++;
 
@@ -233,34 +275,6 @@ function updateSelector(sel){
     return false;
 }
 
-function deleteSelector(id){
-    selectors = selectors.filter(e => e.id != id)
-
-    // parentNode = document.querySelector(".list-group")
-    item = document.getElementById(id.toString())
-
-    item.parentNode.removeChild(item);
-
-}
-
-function renderSelector(sel){
-    container=document.querySelector(".list-group")
-    item = document.createElement("a")
-    item.classList.add("list-group-item");
-    item.classList.add("list-group-item-action");
-    
-     
-    item.innerHTML = sel.id;
-    item.role = "tab";
-    item.href = "#";
-    item.id = sel.id;
-    item.onclick = () =>{
-    sel.rectangle.setOptions({
-        strokeColor:"red"
-    })}
-    container.appendChild(item);
-    
-}
 
 
 
