@@ -1,3 +1,23 @@
+const fbConfig = {
+    apiKey: "AIzaSyAceP9aR-KV7LSb1_9ESMR9rlUgc6mcE-c",
+    authDomain: "tree-maps-7cc04.firebaseapp.com",
+    databaseURL: "https://tree-maps-7cc04.firebaseio.com",
+    projectId: "tree-maps-7cc04",
+    storageBucket: "tree-maps-7cc04.appspot.com",
+    messagingSenderId: "332200082190"
+  };
+
+firebase.initializeApp(fbConfig);
+
+const db = firebase.firestore();
+
+let store = [];
+
+db.settings({timestampsInSnapshots: true});
+
+const coll = db.collection('zones');
+
+
 document.addEventListener('DOMContentLoaded', function () {
     if (document.querySelectorAll('#map').length > 0)
     {
@@ -16,36 +36,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
   class Zone {
 
-    constructor(map, pos, id=0, bounds){
+    constructor(map, bounds, id='placeholder'){
         this.map = map;
-        this.pos = pos;
         this.id = id;
-        if(!bounds){
-            this.bounds = [{lat: this.pos.lat -.001,
-                lng: this.pos.lng -.001}, 
-                {
-                    lat: this.pos.lat +.001,
-                    lng: this.pos.lng +.001
-                }];
-        }
-
-        else{
-            this.bounds = bounds;
-        }
-        this.addMarker();
-        this.addRectangle();
-        this.addInfoWindow();
+        this.bounds = new google.maps.LatLngBounds(bounds.sw,bounds.ne);
+        this.isPlaceholder = (this.id==='placeholder') ? true : false;
+        this.addMarker(this.isPlaceholder);
+        this.addRectangle(this.isPlaceholder);
+        this.addInfoWindow(this.isPlaceholder);
     }
 
-    addMarker(){
+    addMarker(active){
 
         //create (render) the marker
 
         this.marker = new google.maps.Marker({
-            position: this.pos,
+            position: this.bounds.getCenter(),
             map: this.map,
-            draggable: true,
-            icon: "../img/marker_info_white_xsmall.png",
+            draggable: active,
+            opacity: active ? 1 : .5,
+            icon: active ? "../img/marker_info_white_xsmall.png" : "../img/marker_info_white_xsmall2.png",
                         
         })
 
@@ -69,16 +79,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } 
 
-    addRectangle(){
+    addRectangle(active){
 
 
         //create the rectangle (render)
 
         this.rectangle = new google.maps.Rectangle({
-            bounds : new google.maps.LatLngBounds( ...this.bounds),
+            bounds : this.bounds,
             map: this.map,
-            editable: true,
-            draggable: true,
+            editable: active,
+            draggable: active,
                 
             });
 
@@ -94,28 +104,54 @@ document.addEventListener('DOMContentLoaded', function () {
 
         this.rectangle.addListener('bounds_changed', ()=>{
             this.marker.setPosition(this.rectangle.getBounds().getCenter());
+            this.bounds = this.rectangle.getBounds();
         });
         
     }
 
-    addInfoWindow(){
+    addInfoWindow(active){
 
         //info window content
 
-        const deleteBtn = `<button type="button"  class="mx-2 btn btn-danger delete">Delete</button>`;
-        const confirmBtn = `<button type="button"  class="mx-2 btn btn-success confirm">Confirm</button>`;
-        const editBtn = `<button type="button"  class="mx-2 btn btn-primary edit" style="display:none">Edit</button>`;
-        const content = `<div id ="${this.id}" class='btn-toolbar'>${confirmBtn + editBtn + deleteBtn}</div>`;
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = "mx-2 btn btn-danger delete";
+        deleteBtn.textContent = 'Delete';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = "mx-2 btn btn-success delete";
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.style.display = active ? 'inline-block': 'none';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = "mx-2 btn btn-primary delete";
+        editBtn.textContent = 'Edit';
+        editBtn.style.display = active ?'none' : 'inline-block';
+
+        // add event handlers
+
+        deleteBtn.addEventListener('click', ()=>{this.remove()});
+
+        confirmBtn.addEventListener('click', (e)=>{
+            confirmBtn.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            this._confirm()
+        });
+
+        editBtn.addEventListener('click', ()=>{
+            editBtn.style.display = 'none';
+            confirmBtn.style.display = 'inline-block';
+            this._edit()
+        });
 
         //render window
 
         this.infoWindow = new google.maps.InfoWindow(
             {
-            content
+            content: `<div id ="${this.id}" class='btn-toolbar'></div>`
             }
         );
     
-        this.infoWindow.open(this.map,this.marker);
+        if(active) this.infoWindow.open(this.map,this.marker);
         
         //handle dynamic opening
 
@@ -125,32 +161,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
         google.maps.event.addListener(this.infoWindow, 'domready', ()=> {
 
-            const div = document.getElementById(this.id);
-            const deleteElem = div.querySelector('.delete');
-            const confirmElem = div.querySelector('.confirm');
-            const editElem = div.querySelector('.edit');
-
-            deleteElem.addEventListener('click', ()=>{this.remove()});
-            confirmElem.addEventListener('click', ()=>{
-                confirmElem.style.display = 'none';
-                editElem.style.display = 'inline-block';
-                this._confirm()
-            });
-            editElem.addEventListener('click', ()=>{
-                editElem.style.display = 'none';
-                confirmElem.style.display = 'inline-block';
-                this._edit()
-            });
+            const div = document.getElementById(this.id);;
+            div.appendChild(confirmBtn);
+            div.appendChild(editBtn);
+            div.appendChild(deleteBtn);
 
         });
     }
 
 
     remove(){
+        coll.doc(this.id).delete().then(()=>{
+            this.hide();
+        });
+    }
+
+    hide(){
         this.infoWindow.close();
         this.marker.setMap(null);
         this.rectangle.setMap(null);
-    } 
+        this.removed = true;
+    }
 
     _confirm(){
         this.infoWindow.close();
@@ -164,6 +195,37 @@ document.addEventListener('DOMContentLoaded', function () {
             draggable: false,
             strokeOpacity:.5,
         });
+
+        this.submit();
+        
+        
+    }
+
+    submit(){
+
+        coll.doc(this.id).get().then(query =>{
+            if(query.exists){
+
+                coll.doc(this.id).update({
+                    bounds: {
+                        ne: this.bounds.getNorthEast().toJSON(),
+                        sw: this.bounds.getSouthWest().toJSON(),
+                    }
+                })
+            }
+            else{
+
+                coll.add({
+                    bounds: {
+                                ne: this.bounds.getNorthEast().toJSON(),
+                                sw: this.bounds.getSouthWest().toJSON(),
+                            }
+                    })
+                this.hide();
+                }
+                
+            }); 
+               
     }
 
     _edit(){
@@ -186,40 +248,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 }
 
-function deleteSelector(id){
-    selectors = selectors.filter(e => e.id != id)
-
-    // parentNode = document.querySelector(".list-group")
-    item = document.getElementById(id.toString())
-
-    item.parentNode.removeChild(item);
-
-}
-
-function renderSelector(sel){
-    container=document.querySelector(".list-group")
-    item = document.createElement("a")
-    item.classList.add("list-group-item");
-    item.classList.add("list-group-item-action");
-    
-     
-    item.innerHTML = sel.id;
-    item.role = "tab";
-    item.href = "#";
-    item.id = sel.id;
-    item.onclick = () =>{
-    sel.rectangle.setOptions({
-        strokeColor:"red"
-    })}
-    container.appendChild(item);
-    
-}
-
-
-
 
 let map;
-let id = 0;
 let selectors = [];
 
 function initMap() {
@@ -231,11 +261,23 @@ function initMap() {
    
     let isActive = false;
 
+    coll.onSnapshot(snapshot =>{
+        store.forEach(zone=>{
+            zone.hide();
+        });
+        store = snapshot.docs.map(doc=>{
+            let zone = new Zone(map, doc.data().bounds, doc.id)
+            return zone;
+        })
+        console.log(store);
+    });
+
+    let zone;
 
     google.maps.event.addListener(map,"click", (e)=>
     {   
-    
-        if(isActive) return;
+
+        // if(isActive) return;
 
         //state managment
         // isActive = true;
@@ -243,9 +285,16 @@ function initMap() {
         
         const pos = e.latLng.toJSON();
 
-        let zone = new Zone(map, pos, id);
+        let bounds = { sw:{lat: pos.lat -.001,
+                            lng: pos.lng -.001},
+            ne:
+                {lat: pos.lat +.001,
+                lng: pos.lng +.001}
+            }
+        if(!zone || zone.removed){zone = new Zone(map, bounds);}
+        
 
-        id++;
+        // id++;
 
         // let selector = {
         //     marker,
@@ -279,4 +328,32 @@ function updateSelector(sel){
 
 
 
+function deleteSelector(id){
+    selectors = selectors.filter(e => e.id != id)
+
+    // parentNode = document.querySelector(".list-group")
+    item = document.getElementById(id.toString())
+
+    item.parentNode.removeChild(item);
+
+}
+
+function renderSelector(sel){
+    container=document.querySelector(".list-group")
+    item = document.createElement("a")
+    item.classList.add("list-group-item");
+    item.classList.add("list-group-item-action");
+    
+     
+    item.innerHTML = sel.id;
+    item.role = "tab";
+    item.href = "#";
+    item.id = sel.id;
+    item.onclick = () =>{
+    sel.rectangle.setOptions({
+        strokeColor:"red"
+    })}
+    container.appendChild(item);
+    
+}
 
