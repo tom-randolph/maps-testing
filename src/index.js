@@ -15,7 +15,7 @@ let store = [];
 
 db.settings({timestampsInSnapshots: true});
 
-const coll = db.collection('zones');
+const coll = db.collection('dev');
 
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -41,12 +41,36 @@ document.addEventListener('DOMContentLoaded', function () {
         this.id = id;
         this.bounds = new google.maps.LatLngBounds(bounds.sw,bounds.ne);
         this.isPlaceholder = (this.id==='placeholder') ? true : false;
-        this.addMarker(this.isPlaceholder);
-        this.addRectangle(this.isPlaceholder);
-        this.addInfoWindow(this.isPlaceholder);
+        this.rendered = false;
+        this.renderInView();
     }
 
-    addMarker(active){
+    renderInView(){
+        
+        try{
+            const inView = this.map.getBounds().intersects(this.bounds) || this.map.getBounds().contains(this.bounds.getCenter());
+        
+        if(inView){
+            if(!this.rendered) this.render(this.isPlaceholder);
+
+        }
+        
+        else this.hide();
+        }
+        catch(e){
+            console.log( 'Could not render zone, map may not be loaded.');
+        }
+
+    }
+
+    render(active){
+        this._addMarker(active);
+        this._addRectangle(active);
+        this._addInfoWindow(active);
+        this.rendered = true;
+    }
+
+    _addMarker(active){
 
         //create (render) the marker
 
@@ -79,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } 
 
-    addRectangle(active){
+    _addRectangle(active){
 
 
         //create the rectangle (render)
@@ -110,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
     }
 
-    addInfoWindow(active){
+    _addInfoWindow(active){
 
         //info window content
 
@@ -181,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.infoWindow.close();
         this.marker.setMap(null);
         this.rectangle.setMap(null);
-        this.removed = true;
+        this.rendered = false;
     }
 
     _confirm(){
@@ -243,9 +267,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    list(){
-        const list = document.querySelector('.list');
-    }
 
 }
 
@@ -259,8 +280,6 @@ function initMap() {
 
     map = new google.maps.Map(
         document.getElementById('map'), {center: startLoc, mapTypeId: "satellite",zoom: 18, });
-   
-    let isActive = false;
 
     coll.onSnapshot(snapshot =>{
         store.forEach(zone=>{
@@ -270,12 +289,13 @@ function initMap() {
             let zone = new Zone(map, doc.data().bounds, doc.id)
             return zone;
         })
-        console.log(store);
     });
 
     let zone;
-
-    google.maps.event.addListener(map,"click", (e)=>
+    google.maps.event.addListener(map, 'bounds_changed', (e) =>{
+        renderZones(store);
+    })
+    google.maps.event.addListener(map,'click', (e)=>
     {   
 
         // if(isActive) return;
@@ -292,23 +312,19 @@ function initMap() {
                 {lat: pos.lat +.001,
                 lng: pos.lng +.001}
             }
-        if(!zone || zone.removed){zone = new Zone(map, bounds);}
+
+        if(!zone || !zone.rendered){zone = new Zone(map, bounds);}
         
-
-        // id++;
-
-        // let selector = {
-        //     marker,
-        //     rectangle,
-        //     id: markerID,
-        //     pos,
-        //     bounds: rectangle.getBounds().toJSON()
-        // }
-        // selectors.push(selector);
-        // renderSelector(selector);
     });
 
 
+}
+
+function renderZones(zones){
+
+    zones.forEach(zone =>{
+        zone.renderInView();
+    });
 }
 
 
