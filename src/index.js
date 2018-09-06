@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
             map: this.map,
             editable: active,
             draggable: active,
+            strokeOpacity: active ? 1 :.5
                 
             });
 
