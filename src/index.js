@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
             map: this.map,
             draggable: active,
             opacity: active ? 1 : .5,
-            icon: active ? "../img/marker_info_white_xsmall.png" : "../img/marker_info_white_xsmall2.png",
+            icon: active ? "marker_info_white_xsmall.png" : "marker_info_white_xsmall2.png",
                         
         })
 
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.marker.setOptions({
             draggable:false,
             opacity:.5,
-            icon: "../img/marker_info_white_xsmall2.png"
+            icon: "marker_info_white_xsmall2.png"
         });
         this.rectangle.setOptions({
             editable:false,
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.marker.setOptions({
             draggable:true,
             opacity:1,
-            icon: "../img/marker_info_white_xsmall.png"
+            icon: "marker_info_white_xsmall.png"
         });
         this.rectangle.setOptions({
             editable:true,
